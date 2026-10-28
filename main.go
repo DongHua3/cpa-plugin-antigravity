@@ -56,7 +56,7 @@ const abiVersion = 1
 const (
 	pluginName       = "antigravity-coding-filter"
 	pluginVersion    = "0.3.0"
-	pluginRepository = "https://github.com/jellyfish-p/cpa-plugin-antigravity-coding-filter"
+	pluginRepository = "https://github.com/DongHua3/cpa-plugin-antigravity"
 )
 
 func main() {}
@@ -171,7 +171,7 @@ func registrationResponse() any {
 		Metadata: pluginapi.Metadata{
 			Name:             pluginName,
 			Version:          pluginVersion,
-			Author:           "local",
+			Author:           "DongHua3",
 			GitHubRepository: pluginRepository,
 			Logo:             "",
 			ConfigFields:     configFields(),
