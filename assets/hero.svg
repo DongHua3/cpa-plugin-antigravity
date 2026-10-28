@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="340" viewBox="0 0 1200 340" role="img" aria-label="Antigravity Coding Filter：把编码客户端的系统提示改写为 Antigravity">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0b1220"/>
+      <stop offset="1" stop-color="#131c31"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#58a6ff"/>
+      <stop offset="1" stop-color="#7ee787"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1200" height="340" fill="url(#bg)"/>
+  <rect x="0" y="0" width="1200" height="3" fill="url(#accent)"/>
+
+  <text x="600" y="86" text-anchor="middle" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Arial, sans-serif" font-size="46" font-weight="700" fill="#e6edf3">Antigravity Coding Filter</text>
+  <text x="600" y="126" text-anchor="middle" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Arial, sans-serif" font-size="19" fill="#9aa7b8">在请求抵达上游之前，把编码客户端的自我标识改写成 Antigravity</text>
+
+  <g font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Arial, sans-serif">
+    <rect x="90" y="176" width="250" height="64" rx="12" fill="#161f33" stroke="#26324a"/>
+    <text x="215" y="206" text-anchor="middle" font-size="17" fill="#e6edf3">Claude Code</text>
+    <text x="215" y="226" text-anchor="middle" font-size="13" fill="#7d8ba1">system</text>
+
+    <rect x="370" y="176" width="250" height="64" rx="12" fill="#161f33" stroke="#26324a"/>
+    <text x="495" y="206" text-anchor="middle" font-size="17" fill="#e6edf3">Codex</text>
+    <text x="495" y="226" text-anchor="middle" font-size="13" fill="#7d8ba1">instructions</text>
+
+    <rect x="650" y="176" width="250" height="64" rx="12" fill="#161f33" stroke="#26324a"/>
+    <text x="775" y="206" text-anchor="middle" font-size="17" fill="#e6edf3">Chat Completions</text>
+    <text x="775" y="226" text-anchor="middle" font-size="13" fill="#7d8ba1">messages[role=system]</text>
+
+    <path d="M920 208 L980 208" stroke="#58a6ff" stroke-width="2.5" fill="none"/>
+    <path d="M972 200 L982 208 L972 216" stroke="#58a6ff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="950" y="192" text-anchor="middle" font-size="12" fill="#58a6ff">rewrite</text>
+
+    <rect x="1000" y="176" width="150" height="64" rx="12" fill="#12301f" stroke="#2ea043"/>
+    <text x="1075" y="206" text-anchor="middle" font-size="17" font-weight="600" fill="#7ee787">Antigravity</text>
+    <text x="1075" y="226" text-anchor="middle" font-size="13" fill="#5f9e6e">upstream</text>
+  </g>
+
+  <text x="600" y="296" text-anchor="middle" font-family="ui-sans-serif, -apple-system, Segoe UI, Roboto, Arial, sans-serif" font-size="14" fill="#6e7c91">CLIProxyAPI v8 · CGO 动态插件 · 覆盖 Claude / OpenAI Chat / OpenAI Responses / Gemini</text>
+</svg>
