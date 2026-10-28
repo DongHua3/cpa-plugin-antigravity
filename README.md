@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="./assets/hero.svg" width="100%" alt="Antigravity Coding Filter：把 Claude Code、Codex、Chat Completions 三类请求的系统提示改写为 Antigravity 后再发往上游">
+  <img src="./assets/hero.svg" width="100%" alt="Antigravity Prompt Filter：把 Claude Code、Codex、Chat Completions 三类请求的系统提示改写为 Antigravity 后再发往上游">
 </p>
 
 <p align="center">
@@ -74,7 +74,7 @@ plugins:
   enabled: true
   dir: "plugins"
   configs:
-    antigravity-coding-filter:
+    antigravity-prompt-filter:
       enabled: true
       priority: 1
       mode: rewrite
@@ -87,16 +87,16 @@ plugins:
 - `block` 模式下，key 是额外的屏蔽词，value 被忽略。
 - `custom_mappings` 也接受逗号或换行分隔的 `原名: 替换值` 字符串；空项与重名项会被忽略。
 
-插件目录搜索顺序：`plugins/<GOOS>/<GOARCH>-<variant>` → `plugins/<GOOS>/<GOARCH>` → `plugins`。插件 ID 取自动态库文件名，因此必须是 `antigravity-coding-filter`。
+插件目录搜索顺序：`plugins/<GOOS>/<GOARCH>-<variant>` → `plugins/<GOOS>/<GOARCH>` → `plugins`。插件 ID 取自动态库文件名，因此必须是 `antigravity-prompt-filter`。
 
 ## 安装
 
 从 [Releases](https://github.com/DongHua3/cpa-plugin-antigravity/releases) 下载对应平台的压缩包，解压后放到：
 
 ```
-plugins/windows/amd64/antigravity-coding-filter.dll
-plugins/linux/amd64/antigravity-coding-filter.so
-plugins/darwin/arm64/antigravity-coding-filter.dylib
+plugins/windows/amd64/antigravity-prompt-filter.dll
+plugins/linux/amd64/antigravity-prompt-filter.so
+plugins/darwin/arm64/antigravity-prompt-filter.dylib
 ```
 
 ## 构建
@@ -107,14 +107,14 @@ plugins/darwin/arm64/antigravity-coding-filter.dylib
 $env:CGO_ENABLED = 1
 
 # Windows
-go build -buildmode=c-shared -o plugins/windows/amd64/antigravity-coding-filter.dll .
-Remove-Item plugins/windows/amd64/antigravity-coding-filter.h
+go build -buildmode=c-shared -o plugins/windows/amd64/antigravity-prompt-filter.dll .
+Remove-Item plugins/windows/amd64/antigravity-prompt-filter.h
 
 # Linux
-go build -buildmode=c-shared -o plugins/linux/amd64/antigravity-coding-filter.so .
+go build -buildmode=c-shared -o plugins/linux/amd64/antigravity-prompt-filter.so .
 
 # macOS
-go build -buildmode=c-shared -o plugins/darwin/arm64/antigravity-coding-filter.dylib .
+go build -buildmode=c-shared -o plugins/darwin/arm64/antigravity-prompt-filter.dylib .
 ```
 
 ## 验证
@@ -122,8 +122,8 @@ go build -buildmode=c-shared -o plugins/darwin/arm64/antigravity-coding-filter.d
 启动 CLIProxyAPI，日志里应出现：
 
 ```text
-pluginhost: plugin loaded plugin_id=antigravity-coding-filter
-pluginhost: plugin registered plugin_id=antigravity-coding-filter version=0.3.0
+pluginhost: plugin loaded plugin_id=antigravity-prompt-filter
+pluginhost: plugin registered plugin_id=antigravity-prompt-filter version=0.4.0
 ```
 
 端到端确认：打开宿主的请求日志（`auths/logs/v1-*.log`），对比同一个请求的两段 body —— 入站仍带客户端原名，上游已是 `Antigravity`。

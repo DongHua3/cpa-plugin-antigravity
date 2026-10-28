@@ -54,8 +54,8 @@ import (
 const abiVersion = 1
 
 const (
-	pluginName       = "antigravity-coding-filter"
-	pluginVersion    = "0.3.0"
+	pluginName       = "antigravity-prompt-filter"
+	pluginVersion    = "0.4.0"
 	pluginRepository = "https://github.com/DongHua3/cpa-plugin-antigravity"
 )
 
