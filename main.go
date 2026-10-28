@@ -225,7 +225,7 @@ func handleModelRoute(request []byte) []byte {
 	if cfg.Mode != filterModeBlock {
 		return mustEnvelope(pluginapi.ModelRouteResponse{Handled: false})
 	}
-	decision := classifyRequestWithConfig(req.Body, cfg)
+	decision := classifyRequestForFormat(req.Body, req.SourceFormat, cfg)
 	if !decision.Blocked {
 		return mustEnvelope(pluginapi.ModelRouteResponse{Handled: false})
 	}
@@ -275,7 +275,7 @@ func handleRequestInterceptBefore(request []byte) []byte {
 		return mustEnvelope(pluginapi.RequestInterceptResponse{})
 	}
 
-	body, rewritten := rewriteRequestBodyWithConfig(req.Body, cfg)
+	body, rewritten := rewriteRequestBodyForFormat(req.Body, req.SourceFormat, cfg)
 	if !rewritten {
 		return mustEnvelope(pluginapi.RequestInterceptResponse{})
 	}
@@ -571,51 +571,255 @@ type filterDecision struct {
 }
 
 func classifyRequest(body []byte) filterDecision {
-	return classifyRequestWithConfig(body, activeFilterConfig())
+	return classifyRequestForFormat(body, defaultSourceFormat, activeFilterConfig())
 }
 
 func classifyRequestWithConfig(body []byte, cfg filterConfig) filterDecision {
+	return classifyRequestForFormat(body, defaultSourceFormat, cfg)
+}
+
+// classifyRequestForFormat inspects the system text that belongs to the inbound
+// protocol. The host reports that protocol in SourceFormat, so the plugin reads
+// the right field instead of guessing a single field name.
+func classifyRequestForFormat(body []byte, sourceFormat string, cfg filterConfig) filterDecision {
 	var root any
 	if err := json.Unmarshal(body, &root); err != nil {
 		return filterDecision{}
 	}
 
 	mappings := effectiveMappings(cfg)
-	var decision filterDecision
-	walkJSON(root, func(path []string, value any) bool {
-		if len(path) == 0 || path[len(path)-1] != "system" {
-			return true
-		}
-		text := strings.ToLower(collectText(value))
+	for _, text := range systemTextsByFormat(root, sourceFormat) {
+		lower := strings.ToLower(text)
 		for _, mapping := range mappings {
-			if strings.Contains(text, mapping.Match) {
-				decision = filterDecision{Blocked: true, Signal: "system.keyword", Detail: mapping.Match}
-				return false
+			if strings.Contains(lower, mapping.Match) {
+				return filterDecision{Blocked: true, Signal: "system.keyword", Detail: mapping.Match}
 			}
 		}
-		return true
-	})
-	return decision
+	}
+	return filterDecision{}
 }
 
 func rewriteRequestBody(body []byte) ([]byte, bool) {
-	return rewriteRequestBodyWithConfig(body, activeFilterConfig())
+	return rewriteRequestBodyForFormat(body, defaultSourceFormat, activeFilterConfig())
 }
 
 func rewriteRequestBodyWithConfig(body []byte, cfg filterConfig) ([]byte, bool) {
+	return rewriteRequestBodyForFormat(body, defaultSourceFormat, cfg)
+}
+
+// rewriteRequestBodyForFormat rewrites the system text that belongs to the
+// inbound protocol and leaves every other byte of the payload untouched.
+func rewriteRequestBodyForFormat(body []byte, sourceFormat string, cfg filterConfig) ([]byte, bool) {
 	var root any
 	if err := json.Unmarshal(body, &root); err != nil {
 		return nil, false
 	}
-	rewritten, changed := rewriteSystemFields(root, effectiveMappings(cfg))
-	if !changed {
+	if !rewriteSystemTextsByFormat(root, sourceFormat, effectiveMappings(cfg)) {
 		return nil, false
 	}
-	raw, err := json.Marshal(rewritten)
+	raw, err := json.Marshal(root)
 	if err != nil {
 		return nil, false
 	}
 	return raw, true
+}
+
+const defaultSourceFormat = "claude"
+
+// systemRoles lists message roles that carry instructions rather than user turns.
+var systemRoles = map[string]struct{}{"system": {}, "developer": {}}
+
+// systemTextsByFormat returns the instruction text carried by the inbound
+// protocol. Unknown formats return nil so the plugin never guesses.
+func systemTextsByFormat(root any, sourceFormat string) []string {
+	switch sourceFormat {
+	case "claude", "antigravity":
+		return textsAtField(root, "system")
+	case "openai":
+		return append(textsAtField(root, "system"), textsAtRole(root, "messages")...)
+	case "openai-response", "codex":
+		return append(textsAtField(root, "instructions"), textsAtRole(root, "input")...)
+	case "gemini":
+		return geminiSystemTexts(root)
+	default:
+		return nil
+	}
+}
+
+func textsAtField(root any, field string) []string {
+	object, ok := root.(map[string]any)
+	if !ok {
+		return nil
+	}
+	value, exists := object[field]
+	if !exists {
+		return nil
+	}
+	return collectTexts(value)
+}
+
+func collectTexts(value any) []string {
+	switch typed := value.(type) {
+	case string:
+		return []string{typed}
+	case []any:
+		texts := make([]string, 0, len(typed))
+		for _, item := range typed {
+			texts = append(texts, collectTexts(item)...)
+		}
+		return texts
+	case map[string]any:
+		if text, ok := typed["text"].(string); ok {
+			return []string{text}
+		}
+		texts := make([]string, 0, len(typed))
+		for _, child := range typed {
+			texts = append(texts, collectTexts(child)...)
+		}
+		return texts
+	default:
+		return nil
+	}
+}
+
+func textsAtRole(root any, field string) []string {
+	object, ok := root.(map[string]any)
+	if !ok {
+		return nil
+	}
+	messages, ok := object[field].([]any)
+	if !ok {
+		return nil
+	}
+	var texts []string
+	for _, item := range messages {
+		message, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		role, _ := message["role"].(string)
+		if _, isInstruction := systemRoles[strings.ToLower(role)]; !isInstruction {
+			continue
+		}
+		texts = append(texts, collectTexts(message["content"])...)
+	}
+	return texts
+}
+
+func geminiSystemTexts(root any) []string {
+	object, ok := root.(map[string]any)
+	if !ok {
+		return nil
+	}
+	instruction, ok := object["systemInstruction"].(map[string]any)
+	if !ok {
+		return nil
+	}
+	return collectTexts(instruction["parts"])
+}
+
+func rewriteSystemTextsByFormat(root any, sourceFormat string, mappings []rewriteMapping) bool {
+	switch sourceFormat {
+	case "claude", "antigravity":
+		return rewriteField(root, "system", mappings)
+	case "openai":
+		changed := rewriteField(root, "system", mappings)
+		return rewriteRoles(root, "messages", mappings) || changed
+	case "openai-response", "codex":
+		changed := rewriteField(root, "instructions", mappings)
+		return rewriteRoles(root, "input", mappings) || changed
+	case "gemini":
+		return rewriteGeminiSystem(root, mappings)
+	default:
+		return false
+	}
+}
+
+func rewriteField(root any, field string, mappings []rewriteMapping) bool {
+	object, ok := root.(map[string]any)
+	if !ok {
+		return false
+	}
+	value, exists := object[field]
+	if !exists {
+		return false
+	}
+	next, changed := rewriteSystemValue(value, mappings)
+	if changed {
+		object[field] = next
+	}
+	return changed
+}
+
+func rewriteRoles(root any, field string, mappings []rewriteMapping) bool {
+	object, ok := root.(map[string]any)
+	if !ok {
+		return false
+	}
+	messages, ok := object[field].([]any)
+	if !ok {
+		return false
+	}
+	changed := false
+	for _, item := range messages {
+		message, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		role, _ := message["role"].(string)
+		if _, isInstruction := systemRoles[strings.ToLower(role)]; !isInstruction {
+			continue
+		}
+		next, childChanged := rewriteSystemValue(message["content"], mappings)
+		if childChanged {
+			message["content"] = next
+			changed = true
+		}
+	}
+	return changed
+}
+
+func rewriteGeminiSystem(root any, mappings []rewriteMapping) bool {
+	object, ok := root.(map[string]any)
+	if !ok {
+		return false
+	}
+	instruction, ok := object["systemInstruction"].(map[string]any)
+	if !ok {
+		return false
+	}
+	parts, ok := instruction["parts"].([]any)
+	if !ok {
+		return false
+	}
+	changed := false
+	for _, item := range parts {
+		part, ok := item.(map[string]any)
+		if !ok {
+			continue
+		}
+		text, ok := part["text"].(string)
+		if !ok {
+			continue
+		}
+		next, replaced := replaceAllMappings(text, mappings)
+		if replaced {
+			part["text"] = next
+			changed = true
+		}
+	}
+	return changed
+}
+
+func replaceAllMappings(value string, mappings []rewriteMapping) (string, bool) {
+	next := value
+	changed := false
+	for _, mapping := range mappings {
+		var replaced bool
+		next, replaced = replaceInsensitive(next, mapping.Match, mapping.Replacement)
+		changed = changed || replaced
+	}
+	return next, changed
 }
 
 func rewriteSystemFields(value any, mappings []rewriteMapping) (any, bool) {
