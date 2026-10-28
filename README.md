@@ -143,6 +143,11 @@ go test ./...
 - `block` 模式当前不生效，见上文。
 - 上游是否按系统提示判定客户端，取决于上游自身策略；本插件只保证文本口径一致，不保证绕过任何检测。
 
+## 来源
+
+本项目基于 [cpa-plugin-antigravity-coding-filter](https://github.com/jellyfish-p/cpa-plugin-antigravity-coding-filter)（MIT）修改。
+主要变更是把系统提示的改写从单一的 `system` 字段扩展到四种入口协议，并补充跨协议测试与发布流水线。
+
 ## 许可证
 
 MIT
